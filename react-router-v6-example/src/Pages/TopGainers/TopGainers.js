@@ -1,5 +1,4 @@
 import React, {useEffect, useState} from "react";
-import axios from "axios";
 import {css} from "@emotion/react";
 import {CircleLoader} from "react-spinners";
 import "./TopGainers.css";
@@ -11,86 +10,113 @@ const BinanceAPI = {
 };
 
 function TopGainers() {
-  const [gainers, setGainers] = useState([]);
-  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [price, setPrice] = useState({});
-  const itemsPerPage = 5;
-  const websockets = []; // Array to hold WebSocket connections
+  const [websockets, setWebsockets] = useState({});
+  const [currentPage, setCurrentPage] = useState(0);
 
   useEffect(() => {
     fetchGainersAndPrice();
   }, []);
 
   useEffect(() => {
-    // Create a WebSocket connection for each gainer symbol
-    gainers.forEach((gainer) => {
-      const symbol = gainer.symbol.toLowerCase();
-      const ws = new w3cwebsocket(
-        `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`
+    if (Object.keys(websockets).length === 0) return;
+
+    const wsInstances = Object.values(websockets).map((ws) => {
+      const {symbol} = ws;
+      const websocket = new w3cwebsocket(
+        `wss://stream.binance.com:9443/ws/${symbol}@ticker`
       );
 
-      // Handle WebSocket message
-      ws.onmessage = (message) => {
+      websocket.onmessage = (message) => {
         const data = JSON.parse(message.data);
-        // Handle received data for the symbol
-        // Update the state or perform any necessary actions
         handleWebSocketData(symbol, data);
       };
 
-      websockets.push(ws); // Store the WebSocket connection in the array
+      return websocket;
     });
 
-    // Cleanup function
     return () => {
-      // Close WebSocket connections on component unmount
-      websockets.forEach((ws) => {
+      wsInstances.forEach((ws) => {
         ws.close();
       });
     };
-  }, [gainers]);
+  }, [websockets]);
 
   const fetchGainersAndPrice = async () => {
-    setLoading(true); // Set loading to true before fetching data
+    setLoading(true);
 
     try {
-      const response = await axios.get(
+      const response = await fetch(
         `${BinanceAPI.baseUrl}${BinanceAPI.endpoint}`
       );
-      const data = response.data;
+      const data = await response.json();
       const filteredGainers = data.filter(
         (item) =>
           item.symbol.endsWith("USDT") &&
           parseFloat(item.priceChangePercent) > 0
       );
-      const sortedGainers = filteredGainers.sort(
-        (a, b) =>
-          parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent)
-      );
-      setGainers(sortedGainers);
+      const sortedGainers = filteredGainers
+        .slice(0, 10)
+        .sort(
+          (a, b) =>
+            parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent)
+        );
+      setPrice(getPricesFromGainers(sortedGainers));
+      createWebsockets(sortedGainers);
 
-      // Fetch prices for each gainer symbol
-      // const prices = {};
-      // for (let gainer of sortedGainers) {
-      //   const symbol = gainer.symbol;
-      //   const priceResponse = await axios.get(
-      //     `${BinanceAPI.baseUrl}${BinanceAPI.price}${symbol}`
-      //   );
-      //   const priceData = priceResponse.data;
-      //   prices[symbol] = priceData.price;
-      // }
-      // setPrice(prices);
-
-      setLoading(false); // Set loading to false after data is fetched
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
   };
 
+  const getPricesFromGainers = (gainers) => {
+    return gainers.reduce((prices, gainer) => {
+      const symbol = gainer.symbol.toLowerCase();
+      prices[symbol] = gainer.lastPrice;
+      return prices;
+    }, {});
+  };
+
+  const createWebsockets = async (gainers) => {
+    if (Object.keys(websockets).length >= 10) {
+      // Already created 10 websockets, no need to continue
+      return;
+    }
+
+    gainers.forEach((gainer) => {
+      const symbol = gainer.symbol.toLowerCase();
+
+      const websocket = new w3cwebsocket(
+        `wss://stream.binance.com:9443/ws/${symbol}@ticker`
+      );
+
+      websocket.onmessage = (message) => {
+        const data = JSON.parse(message.data);
+        handleWebSocketData(symbol, data);
+      };
+
+      setWebsockets((prevWebsockets) => ({
+        ...prevWebsockets,
+        [symbol]: {
+          symbol: symbol,
+          percentageChange: gainer.priceChangePercent,
+          price: gainer.lastPrice,
+        },
+      }));
+    });
+  };
+
   const handleWebSocketData = (symbol, data) => {
-    // Handle received data for the symbol
-    // Update the state or perform any necessary actions
-    console.log(symbol, data);
+    setWebsockets((prevWebsockets) => ({
+      ...prevWebsockets,
+      [symbol]: {
+        ...prevWebsockets[symbol],
+        percentageChange: data.P,
+        price: data.p,
+      },
+    }));
   };
 
   const formatTickerSymbol = (symbol) => {
@@ -103,55 +129,71 @@ function TopGainers() {
     return symbol;
   };
 
-  const startIndex = page * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const displayedGainers = gainers.slice(startIndex, endIndex);
-
-  const handleNext = () => {
-    setPage((prevPage) => prevPage + 1);
-  };
-
-  const handlePrevious = () => {
-    setPage((prevPage) => prevPage - 1);
-  };
-
   const override = css`
     display: block;
     margin: 0 auto;
     border-color: red;
   `;
 
+  const handlePreviousPage = () => {
+    setCurrentPage((prevPage) => Math.max(0, prevPage - 1));
+  };
+
+  const handleNextPage = () => {
+    const totalPages = Math.ceil(Object.keys(websockets).length / 5);
+    setCurrentPage((prevPage) => Math.min(prevPage + 1, totalPages - 1));
+  };
+
+  const startIndex = currentPage * 5;
+  const endIndex = startIndex + 5;
+  const visibleWebsockets = Object.entries(websockets).slice(
+    startIndex,
+    endIndex
+  );
+
   return (
     <div>
       <h1 className='title'>Daily Top Gainers</h1>
       <div className='carousel-container'>
-        <button
-          className='carousel-button left'
-          disabled={page === 0}
-          onClick={handlePrevious}
-        >
-          &lt;
-        </button>
         <div className='carousel'>
           {loading ? (
             <CircleLoader color='#F3BA2F' css={override} size={50} />
           ) : (
-            websockets.map((gainer, index) => (
-              <div key={gainer.symbol} className='carousel-item'>
-                <h3>{formatTickerSymbol(gainer.symbol)}</h3>
-                <h3>{gainer.priceChangePercent}%</h3>
-                <h3>${gainer.price}</h3>
-              </div>
-            ))
+            <>
+              {visibleWebsockets.map(([symbol, gainerData]) => {
+                const {percentageChange, price} = gainerData;
+                return (
+                  <div key={symbol} className='carousel-item'>
+                    <h3>{symbol}</h3>
+                    <h3>{percentageChange}%</h3>
+                    <h3>${price}</h3>
+                  </div>
+                );
+              })}
+              {Object.keys(websockets).length > 5 && (
+                <div className='carousel-navigation'>
+                  <button
+                    className='carousel-button'
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 0}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    className='carousel-button'
+                    onClick={handleNextPage}
+                    disabled={
+                      currentPage ===
+                      Math.ceil(Object.keys(websockets).length / 5) - 1
+                    }
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
-        <button
-          className='carousel-button right'
-          disabled={endIndex >= gainers.length}
-          onClick={handleNext}
-        >
-          &gt;
-        </button>
       </div>
     </div>
   );
