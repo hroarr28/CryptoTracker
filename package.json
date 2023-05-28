@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@emotion/react": "^11.11.0",
+    "axios": "^1.4.0",
+    "react-spinners": "^0.13.8",
+    "socket.io-client": "^4.6.1",
+    "websocket": "^1.0.34",
+    "ws": "^8.13.0"
+  }
+}
