@@ -1,8 +1,8 @@
 import React, {useEffect, useState} from "react";
 import {css} from "@emotion/react";
 import {CircleLoader} from "react-spinners";
-import "./TopGainers.css";
 import {w3cwebsocket} from "websocket";
+import "./TopGainers.css";
 
 const BinanceAPI = {
   baseUrl: "https://api.binance.com",
@@ -11,7 +11,6 @@ const BinanceAPI = {
 
 function TopGainers() {
   const [loading, setLoading] = useState(true);
-  const [price, setPrice] = useState({});
   const [websockets, setWebsockets] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -22,7 +21,7 @@ function TopGainers() {
   useEffect(() => {
     if (Object.keys(websockets).length === 0) return;
 
-    const wsInstances = Object.values(websockets).map((ws) => {
+    const websocketInstances = Object.values(websockets).map((ws) => {
       const {symbol} = ws;
       const websocket = new w3cwebsocket(
         `wss://stream.binance.com:9443/ws/${symbol}@ticker`
@@ -37,11 +36,23 @@ function TopGainers() {
     });
 
     return () => {
-      wsInstances.forEach((ws) => {
+      websocketInstances.forEach((ws) => {
+        ws.onclose = () => {}; // Clear the `onclose` handler
         ws.close();
       });
     };
   }, [websockets]);
+
+  const handleWebSocketData = (symbol, data) => {
+    setWebsockets((prevWebsockets) => ({
+      ...prevWebsockets,
+      [symbol]: {
+        ...prevWebsockets[symbol],
+        percentageChange: data.P,
+        price: data.p,
+      },
+    }));
+  };
 
   const fetchGainersAndPrice = async () => {
     setLoading(true);
@@ -62,30 +73,22 @@ function TopGainers() {
           (a, b) =>
             parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent)
         );
-      setPrice(getPricesFromGainers(sortedGainers));
       createWebsockets(sortedGainers);
 
       setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
+      return; // Stop executing further code
     }
-  };
-
-  const getPricesFromGainers = (gainers) => {
-    return gainers.reduce((prices, gainer) => {
-      const symbol = gainer.symbol.toLowerCase();
-      prices[symbol] = gainer.lastPrice;
-      return prices;
-    }, {});
   };
 
   const createWebsockets = async (gainers) => {
     if (Object.keys(websockets).length >= 10) {
-      // Already created 10 websockets, no need to continue
       return;
     }
 
-    gainers.forEach((gainer) => {
+    const newWebsockets = {};
+    gainers.slice(0, 10).forEach((gainer) => {
       const symbol = gainer.symbol.toLowerCase();
 
       const websocket = new w3cwebsocket(
@@ -97,34 +100,25 @@ function TopGainers() {
         handleWebSocketData(symbol, data);
       };
 
-      setWebsockets((prevWebsockets) => ({
-        ...prevWebsockets,
-        [symbol]: {
-          symbol: symbol,
-          percentageChange: gainer.priceChangePercent,
-          price: gainer.lastPrice,
-        },
-      }));
+      newWebsockets[symbol] = {
+        symbol: formatSymbol(symbol),
+        percentageChange: gainer.priceChangePercent,
+        price: gainer.lastPrice,
+      };
     });
-  };
 
-  const handleWebSocketData = (symbol, data) => {
     setWebsockets((prevWebsockets) => ({
       ...prevWebsockets,
-      [symbol]: {
-        ...prevWebsockets[symbol],
-        percentageChange: data.P,
-        price: data.p,
-      },
+      ...newWebsockets,
     }));
   };
 
-  const formatTickerSymbol = (symbol) => {
-    const index = symbol.lastIndexOf("USDT");
-    if (index !== -1) {
-      const base = symbol.substring(0, index);
-      const quote = symbol.substring(index);
-      return `${base}/${quote}`;
+  const formatSymbol = (symbol) => {
+    const usdtIndex = symbol.toUpperCase().lastIndexOf("USDT");
+    if (usdtIndex !== -1) {
+      const base = symbol.substring(0, usdtIndex);
+      const quote = symbol.substring(usdtIndex);
+      return `${base}/${quote}`.toUpperCase();
     }
     return symbol;
   };
@@ -160,11 +154,18 @@ function TopGainers() {
             <CircleLoader color='#F3BA2F' css={override} size={50} />
           ) : (
             <>
+              <button
+                className='carousel-button'
+                onClick={handlePreviousPage}
+                disabled={currentPage === 0}
+              >
+                Previous
+              </button>
               {visibleWebsockets.map(([symbol, gainerData]) => {
                 const {percentageChange, price} = gainerData;
                 return (
                   <div key={symbol} className='carousel-item'>
-                    <h3>{symbol}</h3>
+                    <h3>{formatSymbol(symbol)}</h3>
                     <h3>{percentageChange}%</h3>
                     <h3>${price}</h3>
                   </div>
@@ -172,13 +173,6 @@ function TopGainers() {
               })}
               {Object.keys(websockets).length > 5 && (
                 <div className='carousel-navigation'>
-                  <button
-                    className='carousel-button'
-                    onClick={handlePreviousPage}
-                    disabled={currentPage === 0}
-                  >
-                    Previous
-                  </button>
                   <button
                     className='carousel-button'
                     onClick={handleNextPage}

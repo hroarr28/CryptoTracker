@@ -1,5 +1,5 @@
 .carousel-container {
-  width: 80%;
+  width: 100%;
   margin: 0 auto;
   padding: 10px;
   position: relative;
@@ -8,13 +8,12 @@
 .carousel {
   width: 100%;
   height: auto;
-
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between; /* Updated: Use space-between to place buttons on opposite sides */
+  align-items: center; /* Updated: Center the carousel items vertically */
 }
 
 .carousel-item {
-  width: 20%;
   height: 100px;
   margin-right: 2%;
   text-align: center;
@@ -22,11 +21,15 @@
 
 .carousel-item p {
   margin: 10px 0;
+  font-size: 1.5rem;
+  line-height: 1.5;
+  gap: 10px;
 }
 
 .carousel-navigation {
   width: 100%;
   bottom: 10px;
+  gap: 10px;
 }
 
 .carousel-button {
@@ -35,7 +38,6 @@
   color: #fff;
   cursor: pointer;
   padding: 10px;
-  margin-right: 10px;
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -82,4 +84,38 @@
 .title {
   font-family: "Roboto", sans-serif;
   font-size: 4rem;
+}
+
+/* Updated CSS */
+
+.carousel {
+  max-width: 500px; /* Width of the carousel */
+  margin: 0 auto; /* Center the carousel horizontally */
+  position: relative;
+}
+
+.carousel-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10; /* Bring the buttons to the front */
+}
+
+.carousel-button.left {
+  left: 0;
+}
+
+.carousel-button.right {
+  right: 0;
+}
+
+.carousel-item p {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.carousel-item {
+  margin-right: 2%;
 }
