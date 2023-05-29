@@ -1,121 +1,29 @@
-.carousel-container {
-  width: 100%;
-  margin: 0 auto;
-  padding: 10px;
-  position: relative;
-}
-
 .carousel {
-  width: 100%;
-  height: auto;
   display: flex;
-  justify-content: space-between; /* Updated: Use space-between to place buttons on opposite sides */
-  align-items: center; /* Updated: Center the carousel items vertically */
+  justify-content: center;
+}
+
+.carousel-items-container {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-gap: 20px;
 }
 
 .carousel-item {
-  height: 100px;
-  margin-right: 2%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
 }
 
-.carousel-item p {
-  margin: 10px 0;
-  font-size: 1.5rem;
-  line-height: 1.5;
-  gap: 10px;
+.down-arrow-container {
+  display: flex;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
 }
 
-.carousel-navigation {
-  width: 100%;
-  bottom: 10px;
-  gap: 10px;
-}
-
-.carousel-button {
-  background-color: #f0b90b; /* Binance Yellow */
-  border: 1px solid #f0b90b; /* Binance Yellow */
-  color: #fff;
-  cursor: pointer;
-  padding: 10px;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.carousel-button.left {
-  left: 10px;
-}
-
-.carousel-button.right {
-  right: 10px;
-}
-
-.carousel-button:hover {
-  background-color: #fff;
-  color: #f0b90b; /* Binance Yellow */
-}
-
-.carousel-button.disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-@media (max-width: 768px) {
-  .carousel-container {
-    width: 100%;
-  }
-
-  .carousel {
-    width: 100%;
-  }
-
-  .carousel-item {
-    float: none;
-    width: 50%;
-    margin-right: 0;
-  }
-
-  .carousel-navigation {
-    display: none;
-  }
-}
-
-.title {
-  font-family: "Roboto", sans-serif;
-  font-size: 4rem;
-}
-
-/* Updated CSS */
-
-.carousel {
-  max-width: 500px; /* Width of the carousel */
-  margin: 0 auto; /* Center the carousel horizontally */
-  position: relative;
-}
-
-.carousel-button {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 10; /* Bring the buttons to the front */
-}
-
-.carousel-button.left {
-  left: 0;
-}
-
-.carousel-button.right {
-  right: 0;
-}
-
-.carousel-item p {
-  margin: 0;
-  font-size: 1.5rem;
-  line-height: 1.5;
-  text-align: center;
-}
-
-.carousel-item {
-  margin-right: 2%;
+.down-arrow {
+  width: 2%;
+  height: 2%;
 }

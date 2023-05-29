@@ -4,192 +4,86 @@ import {CircleLoader} from "react-spinners";
 import {w3cwebsocket} from "websocket";
 import "./TopGainers.css";
 
-const BinanceAPI = {
-  baseUrl: "https://api.binance.com",
-  endpoint: "/api/v3/ticker/24hr",
-};
-
 function TopGainers() {
-  const [loading, setLoading] = useState(true);
-  const [websockets, setWebsockets] = useState({});
+  const [websockets, setWebsockets] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
 
+  let ws = new w3cwebsocket("wss://stream.binance.com:9443/ws/!ticker@arr");
+
   useEffect(() => {
-    fetchGainersAndPrice();
+    ws.onopen = () => {
+      console.log("connected");
+    };
+
+    ws.onmessage = (message) => {
+      const response = JSON.parse(message.data);
+
+      setWebsockets((prevWebsockets) => {
+        const top20Gainers = response
+          .filter((item) => item.s.endsWith("USDT"))
+          .sort((a, b) => b.P - a.P)
+          .slice(0, 20);
+        return top20Gainers;
+      });
+    };
   }, []);
 
   useEffect(() => {
-    if (Object.keys(websockets).length === 0) return;
-
-    const websocketInstances = Object.values(websockets).map((ws) => {
-      const {symbol} = ws;
-      const websocket = new w3cwebsocket(
-        `wss://stream.binance.com:9443/ws/${symbol}@ticker`
-      );
-
-      websocket.onmessage = (message) => {
-        const data = JSON.parse(message.data);
-        handleWebSocketData(symbol, data);
-      };
-
-      return websocket;
-    });
+    const timer = setInterval(() => {
+      if (currentPage < Math.ceil(websockets.length / 5) - 1) {
+        setCurrentPage((prevPage) => prevPage + 1);
+      } else {
+        setCurrentPage(0);
+      }
+    }, 5000);
 
     return () => {
-      websocketInstances.forEach((ws) => {
-        ws.onclose = () => {}; // Clear the `onclose` handler
-        ws.close();
-      });
+      clearInterval(timer);
     };
-  }, [websockets]);
+  }, [currentPage, websockets]);
 
-  const handleWebSocketData = (symbol, data) => {
-    setWebsockets((prevWebsockets) => ({
-      ...prevWebsockets,
-      [symbol]: {
-        ...prevWebsockets[symbol],
-        percentageChange: data.P,
-        price: data.p,
-      },
-    }));
-  };
-
-  const fetchGainersAndPrice = async () => {
-    setLoading(true);
-
-    try {
-      const response = await fetch(
-        `${BinanceAPI.baseUrl}${BinanceAPI.endpoint}`
-      );
-      const data = await response.json();
-      const filteredGainers = data.filter(
-        (item) =>
-          item.symbol.endsWith("USDT") &&
-          parseFloat(item.priceChangePercent) > 0
-      );
-      const sortedGainers = filteredGainers
-        .slice(0, 10)
-        .sort(
-          (a, b) =>
-            parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent)
-        );
-      createWebsockets(sortedGainers);
-
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      return; // Stop executing further code
-    }
-  };
-
-  const createWebsockets = async (gainers) => {
-    if (Object.keys(websockets).length >= 10) {
-      return;
-    }
-
-    const newWebsockets = {};
-    gainers.slice(0, 10).forEach((gainer) => {
-      const symbol = gainer.symbol.toLowerCase();
-
-      const websocket = new w3cwebsocket(
-        `wss://stream.binance.com:9443/ws/${symbol}@ticker`
-      );
-
-      websocket.onmessage = (message) => {
-        const data = JSON.parse(message.data);
-        handleWebSocketData(symbol, data);
-      };
-
-      newWebsockets[symbol] = {
-        symbol: formatSymbol(symbol),
-        percentageChange: gainer.priceChangePercent,
-        price: gainer.lastPrice,
-      };
-    });
-
-    setWebsockets((prevWebsockets) => ({
-      ...prevWebsockets,
-      ...newWebsockets,
-    }));
-  };
-
-  const formatSymbol = (symbol) => {
-    const usdtIndex = symbol.toUpperCase().lastIndexOf("USDT");
-    if (usdtIndex !== -1) {
-      const base = symbol.substring(0, usdtIndex);
-      const quote = symbol.substring(usdtIndex);
-      return `${base}/${quote}`.toUpperCase();
-    }
-    return symbol;
-  };
-
-  const override = css`
-    display: block;
-    margin: 0 auto;
-    border-color: red;
-  `;
-
-  const handlePreviousPage = () => {
-    setCurrentPage((prevPage) => Math.max(0, prevPage - 1));
-  };
+  console.log(websockets);
+  // console.log(top20Gainers);
 
   const handleNextPage = () => {
-    const totalPages = Math.ceil(Object.keys(websockets).length / 5);
-    setCurrentPage((prevPage) => Math.min(prevPage + 1, totalPages - 1));
+    if (currentPage < Math.ceil(websockets.length / 5) - 1) {
+      setCurrentPage((prevPage) => prevPage + 1);
+    } else {
+      setCurrentPage(0);
+    }
   };
 
   const startIndex = currentPage * 5;
-  const endIndex = startIndex + 5;
-  const visibleWebsockets = Object.entries(websockets).slice(
-    startIndex,
-    endIndex
-  );
+  const visibleGainers = websockets.slice(startIndex, startIndex + 5);
 
   return (
-    <div>
+    <>
       <h1 className='title'>Daily Top Gainers</h1>
-      <div className='carousel-container'>
-        <div className='carousel'>
-          {loading ? (
-            <CircleLoader color='#F3BA2F' css={override} size={50} />
-          ) : (
-            <>
-              <button
-                className='carousel-button'
-                onClick={handlePreviousPage}
-                disabled={currentPage === 0}
-              >
-                Previous
-              </button>
-              {visibleWebsockets.map(([symbol, gainerData]) => {
-                const {percentageChange, price} = gainerData;
-                return (
-                  <div key={symbol} className='carousel-item'>
-                    <h3>{formatSymbol(symbol)}</h3>
-                    <h3>{percentageChange}%</h3>
-                    <h3>${price}</h3>
-                  </div>
-                );
-              })}
-              {Object.keys(websockets).length > 5 && (
-                <div className='carousel-navigation'>
-                  <button
-                    className='carousel-button'
-                    onClick={handleNextPage}
-                    disabled={
-                      currentPage ===
-                      Math.ceil(Object.keys(websockets).length / 5) - 1
-                    }
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+      <div className='carousel'>
+        <div className='carousel-items-container'>
+          {visibleGainers.map((item) => (
+            <div className='carousel-item' key={item.s}>
+              <h2 className='carousel-item-title'>{`${item.s.slice(
+                0,
+                -4
+              )}/USDT`}</h2>
+              <h3 className='carousel-item-percentage' style={{color: "green"}}>
+                {item.P}%
+              </h3>
+              <h2 className='carousel-item-price'>{`$${item.p}`}</h2>
+            </div>
+          ))}
         </div>
       </div>
-    </div>
+      <div className='down-arrow-container'>
+        <img
+          onClick={handleNextPage}
+          className='down-arrow'
+          src='https://img.icons8.com/?size=512&id=99977&format=png'
+          alt='downArrow'
+        />
+      </div>
+    </>
   );
 }
 
