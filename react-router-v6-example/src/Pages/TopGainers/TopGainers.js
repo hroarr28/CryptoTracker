@@ -42,7 +42,7 @@ function TopGainers() {
     };
   }, [currentPage, websockets]);
 
-  console.log(websockets);
+  // console.log(websockets);
   // console.log(top20Gainers);
 
   const handleNextPage = () => {
