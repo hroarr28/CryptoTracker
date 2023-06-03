@@ -1,9 +1,10 @@
 import React from "react";
 import axios from "axios";
-import { useState, useEffect } from "react";
+import {useState, useEffect} from "react";
 
 function SearchTicker() {
   const [tickerData, setTickerData] = useState(null);
+  const [searchClicked, setSearchClicked] = useState(false);
   const [search, setSearch] = useState("");
 
   const getTickerData = async () => {
@@ -11,6 +12,7 @@ function SearchTicker() {
       const url = `https://api.binance.com/api/v3/ticker/price?symbol=${search}`;
       const response = await axios.get(url);
       setTickerData(response.data);
+      setSearchClicked(true);
     } catch (error) {
       console.error("Error fetching ticker data:", error);
     }
@@ -18,6 +20,9 @@ function SearchTicker() {
 
   const handleSearch = (e) => {
     setSearch(e.target.value);
+    if (e.target.value === "") {
+      setSearchClicked(false);
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -34,8 +39,8 @@ function SearchTicker() {
         placeholder='Search ticker'
       />
       <button onClick={getTickerData}>Search</button>
-      {search && <h2>{search}</h2>}
-      {tickerData && <h3>Price: {tickerData.price}</h3>}
+      {searchClicked && <h2>{search}</h2>}
+      {searchClicked && <h3>Price: {tickerData.price}</h3>}
     </div>
   );
 }

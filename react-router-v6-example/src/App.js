@@ -12,6 +12,7 @@ function App() {
   return (
     <BrowserRouter>
       <NavBar loggedin={loggedin} />
+
       <Routes>
         <Route path='/' element={<Home />} />
         <Route
