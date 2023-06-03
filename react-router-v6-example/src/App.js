@@ -4,14 +4,20 @@ import NavBar from "./Pages/NavBar/NavBar";
 import LoginForm from "./Pages/LoginForm/LoginForm";
 import Home from "./Pages/Home/Home";
 import LoggedIn from "./Pages/LoggedIn/LoggedIn";
+import {useState} from "react";
 
 function App() {
+  const [loggedin, setLoggedin] = useState(false);
+
   return (
     <BrowserRouter>
-      <NavBar />
+      <NavBar loggedin={loggedin} />
       <Routes>
         <Route path='/' element={<Home />} />
-        <Route path='/login' element={<LoginForm />} />
+        <Route
+          path='/login'
+          element={<LoginForm setLoggedin={setLoggedin} />}
+        />
         <Route path='/user' element={<LoggedIn />} />
       </Routes>
     </BrowserRouter>

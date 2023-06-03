@@ -1,10 +1,9 @@
-import React from "react";
+import React, {useState} from "react";
 import "./LoginForm.css";
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import {useNavigate} from "react-router-dom";
+import {useCustomState} from "../useStates/useCustomState";
 
-
-function LoginForm(props) {
+function LoginForm({setLoggedin}) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
@@ -17,22 +16,19 @@ function LoginForm(props) {
     setPassword(e.target.value);
   };
 
-  
   const handleClick = (e) => {
     e.preventDefault();
     if (username === "admin" && password === "admin") {
-   
-      // No need to redirect here, useEffect will handle it
       navigate("/user");
+      setLoggedin(true);
     } else {
       alert("Invalid username or password");
     }
   };
 
-
   return (
     <div className='login-form'>
-      <form >
+      <form>
         <label htmlFor='username'>Username</label>
         <input
           type='text'
@@ -50,7 +46,9 @@ function LoginForm(props) {
           onChange={handlePassword}
         />
 
-        <button onClick={handleClick} type='submit'>Log In</button>
+        <button onClick={handleClick} type='submit'>
+          Log In
+        </button>
       </form>
     </div>
   );
