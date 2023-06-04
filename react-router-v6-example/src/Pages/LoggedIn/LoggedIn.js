@@ -1,41 +1,38 @@
 import React, {useEffect, useState, useRef} from "react";
 import {w3cwebsocket} from "websocket";
 import "./LoggedIn.css";
+import {Line} from "react-chartjs-2";
 
 function LoggedIn() {
-  const [tickerData, setTickerData] = useState(null);
   const [searchClicked, setSearchClicked] = useState(false);
   const [search, setSearch] = useState("");
-  const [favorites, setFavorites] = useState([]);
   const [showData, setShowData] = useState(false); // New state variable
-
-  const ws = useRef(null);
-
-  useEffect(() => {
-    // Clean up WebSocket connection on component unmount
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
-    };
-  }, []);
+  const tickerDataRef = useRef([]);
 
   const initializeWebSocket = () => {
-    ws.current = new w3cwebsocket(
-      `wss://stream.binance.com:9443/ws/${search.toLowerCase()}@ticker`
+    const ws = new w3cwebsocket(
+      `wss://stream.binance.com:9443/ws/${search.toLowerCase()}@kline_1h`
     );
 
-    ws.current.onopen = () => {
+    ws.onopen = () => {
       console.log("connected");
     };
 
-    ws.current.onmessage = (message) => {
+    ws.onmessage = (message) => {
       const response = JSON.parse(message.data);
-      setTickerData(response);
+      const {k: klineData} = response; // Extract kline data from the WebSocket message
+      const {t: time, c: close, o: open, h: high, l: low} = klineData;
+      const formattedData = {time, close, open, high, low};
+      tickerDataRef.current = [...tickerDataRef.current, formattedData];
+      console.log(tickerDataRef.current);
       setSearchClicked(true);
       setShowData(true); // Show the data
     };
   };
+
+  useEffect(() => {
+    console.log(tickerDataRef.current);
+  }, []);
 
   const handleChange = (e) => {
     setSearch(e.target.value);
@@ -52,27 +49,33 @@ function LoggedIn() {
     }
   };
 
-  const addToFavorites = () => {
-    const newFavorite = {
-      symbol: tickerData?.s,
-      price: tickerData?.p,
-      percentChange: tickerData?.P,
-      volume: tickerData?.v,
-      high: tickerData?.h,
-      low: tickerData?.l,
-    };
-    setFavorites((prevFavorites) => [...prevFavorites, newFavorite]);
-    setSearchClicked(false);
-    setTickerData(null); // Reset tickerData
-    setShowData(false); // Hide the data
-  };
+  const renderChart = () => {
+    if (!tickerDataRef.current || tickerDataRef.current.length === 0) {
+      return null;
+    }
 
-  const removeFavorite = (index) => {
-    setFavorites((prevFavorites) => {
-      const updatedFavorites = [...prevFavorites];
-      updatedFavorites.splice(index, 1);
-      return updatedFavorites;
-    });
+    const chartData = {
+      labels: tickerDataRef.current.map((data) => data.t),
+      datasets: [
+        {
+          label: "Price",
+          data: tickerDataRef.current.map((data) => ({
+            high: data.h,
+            low: data.l,
+          })),
+          fill: false,
+          borderColor: "#82ca9d",
+          tension: 0.1,
+        },
+      ],
+    };
+
+    return (
+      <div>
+        <h2>Chart</h2>
+        <Line data={chartData} />
+      </div>
+    );
   };
 
   return (
@@ -87,37 +90,11 @@ function LoggedIn() {
       />
       <button onClick={handleSearch}>Search</button>
 
-      <div className='favorites'>
-        <h2>Favorites:</h2>
-        <ul className='favorites-list'>
-          {favorites.map((favorite, index) => (
-            <li key={index}>
-              <h2>{favorite.symbol}</h2>
-              <h3>Price: {favorite.price}</h3>
-              <h3>24h Change: {favorite.percentChange}</h3>
-              <h3>24h Volume: {favorite.volume}</h3>
-              <h3>24h High: {favorite.high}</h3>
-              <h3>24h Low: {favorite.low}</h3>
-              <button onClick={() => removeFavorite(index)}>Remove</button>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {searchClicked &&
-        showData && ( // Only show if searchClicked and showData are true
-          <div>
-            <h2>{tickerData.s}</h2>
-            <h3>Price: {tickerData.p}</h3>
-            <h3>24h Change: {tickerData.P}</h3>
-            <h3>24h Volume: {tickerData.v}</h3>
-            <h3>24h High: {tickerData.h}</h3>
-            <h3>24h Low: {tickerData.l}</h3>
-            <div>
-              <button onClick={addToFavorites}>Add to Favorites</button>
-            </div>
-          </div>
-        )}
+      {searchClicked && showData && (
+        <div>
+          <div>{renderChart()}</div>
+        </div>
+      )}
     </div>
   );
 }
