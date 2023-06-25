@@ -4,12 +4,12 @@ import SearchTicker from "../SearchTicker/SearchTicker";
 import TopGainers from "../TopGainers/TopGainers";
 import Popular from "../PopularByVolume/PopularByVolume";
 
-function Home() {
+function Home(props) {
   return (
     <div>
       <SearchTicker />
-      <TopGainers />
-      <Popular />
+      <TopGainers topGainers={props.topGainers} />
+      <Popular popular={props.popular} />
     </div>
   );
 }

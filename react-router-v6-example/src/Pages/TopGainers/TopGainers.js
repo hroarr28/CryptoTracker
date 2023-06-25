@@ -1,36 +1,13 @@
 import React, {useEffect, useState} from "react";
-import {css} from "@emotion/react";
-import {CircleLoader} from "react-spinners";
-import {w3cwebsocket} from "websocket";
+
 import "./TopGainers.css";
 
-function TopGainers() {
-  const [websockets, setWebsockets] = useState([]);
+function TopGainers({topGainers}) {
   const [currentPage, setCurrentPage] = useState(0);
-
-  let ws = new w3cwebsocket("wss://stream.binance.com:9443/ws/!ticker@arr");
-
-  useEffect(() => {
-    ws.onopen = () => {
-      console.log("connected");
-    };
-
-    ws.onmessage = (message) => {
-      const response = JSON.parse(message.data);
-
-      setWebsockets((prevWebsockets) => {
-        const top20Gainers = response
-          .filter((item) => item.s.endsWith("USDT"))
-          .sort((a, b) => b.P - a.P)
-          .slice(0, 20);
-        return top20Gainers;
-      });
-    };
-  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      if (currentPage < Math.ceil(websockets.length / 5) - 1) {
+      if (currentPage < Math.ceil(topGainers.length / 5) - 1) {
         setCurrentPage((prevPage) => prevPage + 1);
       } else {
         setCurrentPage(0);
@@ -40,13 +17,13 @@ function TopGainers() {
     return () => {
       clearInterval(timer);
     };
-  }, [currentPage, websockets]);
+  }, [currentPage, topGainers]);
 
   // console.log(websockets);
   // console.log(top20Gainers);
 
   const handleNextPage = () => {
-    if (currentPage < Math.ceil(websockets.length / 5) - 1) {
+    if (currentPage < Math.ceil(topGainers.length / 5) - 1) {
       setCurrentPage((prevPage) => prevPage + 1);
     } else {
       setCurrentPage(0);
@@ -54,7 +31,7 @@ function TopGainers() {
   };
 
   const startIndex = currentPage * 5;
-  const visibleGainers = websockets.slice(startIndex, startIndex + 5);
+  const visibleGainers = topGainers.slice(startIndex, startIndex + 5);
 
   return (
     <>
