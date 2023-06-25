@@ -1,11 +1,11 @@
 import React, {useState} from "react";
 import "./LoginForm.css";
 import {useNavigate} from "react-router-dom";
-import {useCustomState} from "../useStates/useCustomState";
 
 function LoginForm({setLoggedin}) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+
   const navigate = useNavigate();
 
   const handleUsername = (e) => {
